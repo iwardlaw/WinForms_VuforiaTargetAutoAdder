@@ -1,0 +1,251 @@
+<div class="modal in" id="addTargetmodal" style="display: block;">
+    <script type="text/javascript">
+      var filenamePrefix, fileExt;
+      var row, col, maxRow, maxCol;
+      var imgWidth = 1;
+      var filenameField = document.getElementById("uploadFile");
+      var widthField = document.getElementById("targetDimension");
+      var prefixField = document.getElementById("filePrefix");
+      var extField = document.getElementById("fileExt");
+      var rowField = document.getElementById("fileRow");
+      var colField = document.getElementById("fileCol");
+      var rowMaxField = document.getElementById("fileRowMax");
+      var colMaxField = document.getElementById("fileColMax");
+      
+      function autofillAddTarget() {
+        //alert("Howdy.");
+        filenamePrefix = filenamePrefix || prefixField.value;
+        fileExt = fileExt || extField.value;
+        row = row || rowField.value;
+        col = col + 1 || colField.value;
+        maxRow = maxRow || rowMaxField.value;
+        maxCol = maxCol || colMaxField.value;
+        if(col > maxCol) {
+          col = 1;
+          ++row;
+        }
+        if(row > maxRow)
+          alert("Row has exceeded maximum value. Reset to 1 and provide a new file prefix.");
+        else {
+        	filenameField.value = filenamePrefix + "--" + pad(row, 2) + "-" + pad(col, 2) + "." + fileExt;
+        	widthField.value = imgWidth;
+        	//alert(filenamePrefix + "--" + pad(row, 2) + "-" + pad(col, 2) + "." + fileExt);
+        }
+      }
+      
+      // Courtesy Pointy on StackOverflow.
+      // &amp;amp;amp;amp;lt;https://stackoverflow.com/questions/10073699/pad-a-number-with-leading-zeros-in-javascript#10073788&amp;amp;amp;amp;gt;
+      function pad(n, width, z) {
+ 				z = z || "0";
+  			n = n + "";
+  			return n.length >= width ? n : new Array(width - n.length + 1).join(z) + n;
+			}
+    </script>
+    <form id="addNonCloudTargetForm" action="/targetmanager/singleDeviceTarget/createNonCloudTarget" method="post" enctype="multipart/form-data" abineguid="FB5DF266FA8D4EAD9CFFF336DD2CB80B">
+        <div class="modal-header">
+            <button type="button" class="close closeAddNonCloudTargetPopUp closeModalDialog" data-dismiss="modal">×
+            </button>
+            <h2>Add Target</h2>
+        </div>
+        <div class="modal-body maxHeightForNonCloudAddModal">
+            <fieldset>
+                <div class="control-group">
+                    <div class="dialog_title"><h3>Add Target</h3></div>
+                    <label for="targetName" class="control-label label_margin label_headline" tabindex="0">Type:</label>
+                    
+                    
+                        <div class="controls">
+                            <ul class="list-inline target-types">
+                                <li class="single-image active"><a href="#" name="single-image-form" onclick="setTargetType('singleDevice');" tabindex="0">Single
+                                    Image</a></li>
+                                <li class="cuboid"><a href="#" name="cuboid-form" onclick="setTargetType('cuboidDevice');" tabindex="0">Cuboid</a>
+                                </li>
+                                <li class="cylinder"><a name="cylinder-form" href="#" onclick="setTargetType('cylinder');" tabindex="0">Cylinder</a>
+                                </li>
+                                <li class="threedro"><a href="#" name="threedro-form" onclick="setTargetType('3droDevice');" tabindex="0">3D Object</a>
+                                </li>
+                            </ul>
+                        </div>
+                    
+                </div>
+                <div class="controls clear single-image-form conditional">
+                    <div class="control-group target_imageFile_err">
+                        <label class="control-label2 pull-left  label_margin label_headline">File:</label>
+                        <div class="controls clear">
+                            <input class="input-file2 default-label" id="uploadFile" placeholder="Choose File" disabled="disabled" type="text">
+                            <div class="input-file btn-input-file">
+                                <span>Browse...</span>
+                                <input class="upload" id="targetImgFile" name="fileData[0]" size="100" tabindex="3/" type="file">
+                            </div>
+                        </div>
+                        <div id="imageFileInfo" class="errorMessage add_target_fix_for_text"></div>
+                        <div class="target_text text_bottom_margin add_target_fix_for_text">
+                            .jpg or .png (max file 2mb)
+                        </div>
+
+                    </div>
+                    <div class="control-group">
+                      <label for="filePrefix" class="control-label pull-left label_margin label_headline">File Prefix:</label>
+                      <div class="controls clear">
+                        <input class="span2" id="filePrefix" name="prefix" type="text">
+                      </div>
+                    </div>
+                    <div class="control-group">
+                      <label for="fileExt" class="control-label pull-left label_margin label_headline">File Extension (without "."):</label>
+                      <div class="controls clear">
+                        <input class="span2" id="fileExt" name="extension" type="text">
+                      </div>
+                    </div>
+                    <div class="control-group">
+                      <label for="fileRow" class="control-label pull-left label_margin label_headline">Row:</label>
+                      <div class="controls clear">
+                        <input class="span2" id="fileRow" name="frow" type="number">
+                      </div>
+                    </div>
+                    <div class="control-group">
+                      <label for="fileCol" class="control-label pull-left label_margin label_headline">Column:</label>
+                      <div class="controls clear">
+                        <input class="span2" id="fileCol" name="fcol" type="number">
+                      </div>
+                    </div>
+                    <div class="control-group">
+                      <label for="fileRowMax" class="control-label pull-left label_margin label_headline">Max Row:</label>
+                      <div class="controls clear">
+                        <input class="span2" id="fileRowMax" name="frowMax" type="number">
+                      </div>
+                    </div>
+                    <div class="control-group">
+                      <label for="fileColMax" class="control-label pull-left label_margin label_headline">Max Column:</label>
+                      <div class="controls clear">
+                        <input class="span2" id="fileColMax" name="fcolMax" type="number">
+                      </div>
+                    </div>
+                    <div class="control-group target_width_err target-dimension">
+                        <label for="targetDimension" class="control-label pull-left  label_margin label_headline">Width:</label>
+                        <div class="controls clear">
+                            <input class="span2 form-submit" id="targetDimension" name="width" tabindex="2" maxlength="8" type="text"><span id="widthInfo" class="errorMessage"></span>
+                        </div>
+                        <div class="target_text text_bottom_margin">
+                            Enter the width of your target in scene units. The size of the target should be on the same
+                            scale as your augmented virtual content. Vuforia uses meters as the default unit scale. The
+                            target's height will be calculated when you upload your image.
+                        </div>
+                    </div>
+
+                </div>
+                <div class="cuboid-form conditional hide">
+                    <div class="control-group target_width_cuboid_err target-dimension">
+                        <label class="control-label2 pull-left label_headline">Dimension:</label>
+                        <div class="controls clear">
+                            <label for="targetDimensionCuboid" class="control-label">Width:</label>
+                            <input class="span2 form-submit" id="targetDimensionCuboid" name="cuboidWidth" tabindex="2" maxlength="8" type="text">
+                            <span id="widthInfoCuboid" class="errorMessage"></span>
+                        </div>
+                        <div class="controls">
+                            <label for="cuboidHeight" class="control-label">Height:</label>
+                            <input class="span2 form-submit" id="cuboidHeight" name="cuboidHeight" tabindex="3" maxlength="8" type="text">
+                            <span id="heightInfo" class="errorMessage"></span>
+                        </div>
+                        <div class="controls">
+                            <label for="cuboidLength" class="control-label">Length:</label>
+                            <input class="span2 form-submit" id="cuboidLength" name="cuboidLength" tabindex="4" maxlength="8" type="text">
+                            <span id="lengthInfo" class="errorMessage"></span>
+                        </div>
+                        <div class="target_text text_bottom_margin">
+                            Enter the width, height and length of your target in the same unit as your augmentation. The
+                            size of the target shall be relative to the size of the augmented virtual content.
+                        </div>
+
+                    </div>
+                </div>
+                <div class="cylinder-form conditional hide">
+                    <div class="control-group target_cylinder_err target-dimension">
+                        <label class="control-label2 pull-left label_headline">Dimension:</label>
+                        <div class="controls clear">
+                            <label class="control-label" for="bottomDiameter">Bottom Diameter:</label> <input class="span2 form-submit" name="bottomDiameter" id="bottomDiameter" tabindex="2" maxlength="8" type="text">
+                            <span id="bottomDiameterInfo" class="errorMessage toDisplayMsgInline"></span>
+                        </div>
+                        <div class="controls">
+                            <label class="control-label" for="top_Diameter">Top Diameter:</label>
+                            <input class="span2 form-submit" name="top_Diameter" id="topDiameter" tabindex="3" maxlength="8" type="text">
+                            <span id="topDiameterInfo" class="errorMessage toDisplayMsgInline"></span>
+                        </div>
+                        <div class="controls">
+                            <label class="control-label" for="cylinderHeight">Side Length:</label>
+                            <input class="span2 form-submit" name="cylinderHeight" id="cylinderHeight" tabindex="4" maxlength="8" type="text">
+                            <span id="cylinderHeightInfo" class="errorMessage toDisplayMsgInline"></span>
+                        </div>
+                        <div class="target_text text_bottom_margin">
+                            Enter the dimensions of your target in scene units. The size of your target shall be on the
+                            same
+                            scale as your augmented virtual content. If you enter '0' for the top or bottom diameter,
+                            your target
+                            will be cone shaped.
+                        </div>
+
+                    </div>
+                </div>
+                <div class="threedro-form conditional hide">
+                    <div class="control-group target_width_err target-dimension">
+                    </div>
+                    <div class="control-group target_imageFile_err">
+                        <label class="control-label2 pull-left label_headline">File:</label>
+                        <div class="controls clear">
+                            <input class="input-file2 default-label" id="droFile" placeholder="Choose File" disabled="disabled" type="text">
+                            <div class="input-file btn-input-file">
+                                <span>Browse...</span>
+                                <input class="upload" id="targetdroFile" name="fileData[1]" tabindex="3/" type="file">
+                            </div>
+                        </div>
+                        <div id="imageFileInfodro" class="add_target_fix_for_text"></div>
+                        <div class="target_text text_bottom_margin add_target_fix_for_text">
+                            File must be Vuforia Object Scanner data. For more information, see the Vuforia Object
+                            Scanner Application.
+                        </div>
+                    </div>
+                </div>
+
+                <div class="control-group target_name_err" style="margin-bottom: 0px">
+                    <div id="webServiceFailedMsg" style="display: none">
+                        <div class="alert alert-error fade in" style="margin-bottom: 10px; width:427px;">
+                            <a href="#" class="close messageClose">×</a> <span id="errorMessageSpan"></span>
+                        </div>
+                    </div>
+                    <label for="targetName" class="control-label pull-left label_margin label_headline">Name:</label>
+                    <input value="" name="showAdminBreadCrumb" id="showAdminBreadCrumbToSend" type="hidden"> <input value="2201587" name="dataRequestedForUserId" id="dataRequestedForUserId1" type="hidden"> <input value="iwardlaw" name="dataRequestedForUsername" id="dataRequestedForUsername1" type="hidden">
+                    <div style="display: none;" id="responseFromServer"></div>
+                    <div class="controls clear">
+
+                        <input id="targetType" value="singleDevice" name="TARGET_TYPE" type="hidden">
+                        <input id="proIdHidden" value="6687b42395fd4d88863006d264f791d3" name="PROJECT_ID" type="hidden">
+                        <input id="proNameHiddenTest" value="ACH_AR_DB" name="projectName" type="hidden">
+
+
+                        <!-- <input id="proId" type="hidden" value="unity" name="DATABASE_TYPE"/> -->
+                        <input id="cubewidthHidden" value="" name="CUBE_WIDTH" type="hidden"> <input id="cuBoidWidth" value="" name="CUBOID_WIDTH" type="hidden"> <input id="cuboidHeightOne" value="" name="CUBOID_HEIGHT" type="hidden">
+                        <input id="cuBoidLength" value="" name="CUBOID_LENGTH" type="hidden">
+                        <input name="BOTTOM_DIAMETER" id="bottom_Diameter" value="" type="hidden"> <input name="topDiameter" id="top_Diameter" value="" type="hidden"> <input name="CYLINDER_HEIGHT" id="cylinder_Height" value="" type="hidden"> <input class="input-xlarge target-name form-submit" id="targetName" name="targetName" maxlength="64" tabindex="1/" type="text"><br>
+                        <span id="nameInfo" class="errorMessage"></span>
+                        <div class="target_text text_bottom_margin">
+                            Name must be unique to a database. When a target is detected in your application, this will
+                            be
+                            reported in the API.
+                        </div>
+
+                    </div>
+
+                </div>
+            </fieldset>
+
+        </div>
+        <div class="modal-footer add_target_footer">
+            <button type="button" id="autofill" class="btn btnFixSize" onclick="autofillAddTarget()">Autofill</button>
+            <button type="submit" id="cancelAddDeviceTarget" class="btn closeModalDialog btnFixSize" data-dismiss="modal" onclick="clearAllNonCloudTargetErrors()" tabindex="5">Cancel
+            </button>
+            <button type="button" id="AddDeviceTargetBtn" class="btn btn-primary closeModalDialog submit-form btnFixSize space_btn_left" tabindex="6">Add
+            </button>
+        </div>
+    <div>
+<input name="CSRFToken" value="6a231ffb-b026-49b8-8a31-76d5400e8d52" type="hidden">
+</div></form>
+</div>
