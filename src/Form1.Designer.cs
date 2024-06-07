@@ -133,7 +133,6 @@
       this.urlBox.Name = "urlBox";
       this.urlBox.Size = new System.Drawing.Size(413, 20);
       this.urlBox.TabIndex = 6;
-      this.urlBox.TextChanged += new System.EventHandler(this.urlBox_TextChanged);
       this.urlBox.KeyDown += new System.Windows.Forms.KeyEventHandler(this.urlBox_KeyDown);
       // 
       // goButton
@@ -204,7 +203,6 @@
       this.label1.Size = new System.Drawing.Size(88, 13);
       this.label1.TabIndex = 14;
       this.label1.Text = "Select by Rating:";
-      this.label1.Click += new System.EventHandler(this.label1_Click);
       // 
       // delayBox
       // 
@@ -327,7 +325,6 @@
       this.label2.Size = new System.Drawing.Size(97, 13);
       this.label2.TabIndex = 30;
       this.label2.Text = "Number of Listings:";
-      this.label2.Click += new System.EventHandler(this.label2_Click);
       // 
       // button50
       // 
@@ -480,7 +477,6 @@
       this.nameSelectLabel.Size = new System.Drawing.Size(63, 13);
       this.nameSelectLabel.TabIndex = 45;
       this.nameSelectLabel.Text = "With Name:";
-      this.nameSelectLabel.Click += new System.EventHandler(this.nameSelectLabel_Click);
       // 
       // nameSelectBox
       // 
@@ -488,7 +484,6 @@
       this.nameSelectBox.Name = "nameSelectBox";
       this.nameSelectBox.Size = new System.Drawing.Size(147, 20);
       this.nameSelectBox.TabIndex = 46;
-      this.nameSelectBox.TextChanged += new System.EventHandler(this.nameSelectBox_TextChanged);
       // 
       // nameSelectToLabel
       // 
@@ -498,7 +493,6 @@
       this.nameSelectToLabel.Size = new System.Drawing.Size(158, 13);
       this.nameSelectToLabel.TabIndex = 47;
       this.nameSelectToLabel.Text = "To Marker with Name (optional):";
-      this.nameSelectToLabel.Click += new System.EventHandler(this.nameSelectToLabel_Click);
       // 
       // nameSelectToBox
       // 
@@ -506,7 +500,6 @@
       this.nameSelectToBox.Name = "nameSelectToBox";
       this.nameSelectToBox.Size = new System.Drawing.Size(147, 20);
       this.nameSelectToBox.TabIndex = 48;
-      this.nameSelectToBox.TextChanged += new System.EventHandler(this.nameSelectToBox_TextChanged);
       // 
       // widthBox
       // 
