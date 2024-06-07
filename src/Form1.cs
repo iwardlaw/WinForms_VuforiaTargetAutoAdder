@@ -6,65 +6,67 @@ using System.Text;
 using System.Threading.Tasks;
 using System.Windows.Forms;
 
-namespace Vuforia_Autoadd_Targets {
-  public partial class Form1 : Form {
+namespace Vuforia_Autoadd_Targets
+{
+	public partial class Form1 : Form
+	{
+		private enum ButtonToggleFlags : byte
+		{
+			None = 0,
+			Cancel = 1,
+			Reset = 2,
+			WriteRatings = 4,
+			ClearRatings = 8,
+			All = byte.MaxValue
+		};
 
-    private enum ButtonToggleFlags : byte {
-      None = 0,
-      Cancel = 1,
-      Reset = 2,
-      WriteRatings = 4,
-      ClearRatings = 8,
-      All = byte.MaxValue
-    };
+		private const float SubmitTimeout = 10f;
 
-    private const float SubmitTimeout = 10f;
+		private bool
+			readyToSubmit = false,
+			submittingAll = false,
+			shouldCancel = false,
+			selectButtonActive = true,
+			userClickedCheckAll = true;
 
-    private bool
-      readyToSubmit = false,
-      submittingAll = false,
-      shouldCancel = false,
-      selectButtonActive = true,
-      userClickedCheckAll = true;
+		private int
+			fileIndex = 0,
+			totalFiles = 0,
+			delay = 0,
+			ratingCellIndex = 0,
+			checkCellIndex = 0,
+			nameCellIndex = 0;
 
-    private int
-      fileIndex = 0,
-      totalFiles = 0,
-      delay = 0,
-      ratingCellIndex = 0,
-      checkCellIndex = 0,
-      nameCellIndex = 0;
+		private DateTime processStart;
+		private readonly bool[] ratingsChecked = { false, false, false, false, false, false };
+		private readonly Dictionary<int, int> selectedRows = new Dictionary<int, int>();
+		private readonly Dictionary<string, int> ratingsByName = new Dictionary<string, int>();
 
-    private DateTime processStart;
-    private readonly bool[] ratingsChecked = { false, false, false, false, false, false };
-    private readonly Dictionary<int, int> selectedRows = new Dictionary<int, int>();
-    private readonly Dictionary<string, int> ratingsByName = new Dictionary<string, int>();
+		public Form1()
+		{
+			InitializeComponent();
+		}
 
-    public Form1()
-    {
-      InitializeComponent();
-    }
-
-    private void browseImagesButton_Click(object sender, EventArgs e)
+		private void browseImagesButton_Click(object sender, EventArgs e)
 		{
 			fileIndex = 0;
 			progressBar.Value = 0;
 
 			if(browseImagesDialog.ShowDialog() != DialogResult.OK) {
-        readyToSubmit = false;
-        progressLabel.Text = "Img 0 of 0";
-        return;
-      }
+				readyToSubmit = false;
+				progressLabel.Text = "Img 0 of 0";
+				return;
+			}
 
-      readyToSubmit = true;
-      totalFiles = browseImagesDialog.FileNames.Length;
-      progressBar.Maximum = totalFiles * 100;
-      PopulateImageTextbox();
-      progressLabel.Text = "Img 0 of " + totalFiles;
-    }
+			readyToSubmit = true;
+			totalFiles = browseImagesDialog.FileNames.Length;
+			progressBar.Maximum = totalFiles * 100;
+			PopulateImageTextbox();
+			progressLabel.Text = "Img 0 of " + totalFiles;
+		}
 
-    private void PopulateImageTextbox()
-    {
+		private void PopulateImageTextbox()
+		{
 			StringBuilder sb = new StringBuilder();
 			for(int i = 0; i < totalFiles; ++i) {
 				sb.Append(Path.GetFileName(browseImagesDialog.FileNames[i]) + ", ");
@@ -72,499 +74,509 @@ namespace Vuforia_Autoadd_Targets {
 			//:: Remove final comma and space.
 			sb.Length -= 2;
 
-      imagesTextbox.Text = sb.ToString();
+			imagesTextbox.Text = sb.ToString();
 		}
 
-    private void goButton_Click(object sender, EventArgs e) => HandleNavigate();
+		private void goButton_Click(object sender, EventArgs e) => HandleNavigate();
 
-    private void urlBox_KeyDown(object sender, KeyEventArgs e)
-    {
-      if(e.KeyCode == Keys.Enter) {
-        HandleNavigate();
-      }
-    }
+		private void urlBox_KeyDown(object sender, KeyEventArgs e)
+		{
+			if(e.KeyCode == Keys.Enter) {
+				HandleNavigate();
+			}
+		}
 
-    private void HandleNavigate()
-    {
-      if(!string.IsNullOrEmpty(urlBox.Text)) {
-        browser.Navigate(urlBox.Text);
-      }
-    }
+		private void HandleNavigate()
+		{
+			if(!string.IsNullOrEmpty(urlBox.Text)) {
+				browser.Navigate(urlBox.Text);
+			}
+		}
 
-    private void submitButton_Click(object sender, EventArgs e) => processNextSubmission();
+		private void submitButton_Click(object sender, EventArgs e) => processNextSubmission();
 
-    private async void SendKeysAfterDelay(string keys, int msDelay, bool sendFinalEnter)
-    {
-      await Task.Delay(msDelay);
-      SendKeys.SendWait(keys);
-      if(sendFinalEnter) {
-        SendKeys.SendWait("{enter}");
-      }
-    }
+		private async void SendKeysAfterDelay(string keys, int msDelay, bool sendFinalEnter)
+		{
+			await Task.Delay(msDelay);
+			SendKeys.SendWait(keys);
+			if(sendFinalEnter) {
+				SendKeys.SendWait("{enter}");
+			}
+		}
 
-    private async void submitAllButton_Click(object sender, EventArgs e)
-    {
-      if(!readyToSubmit) {
-        return;
-      }
+		private async void submitAllButton_Click(object sender, EventArgs e)
+		{
+			if(!readyToSubmit) {
+				return;
+			}
 
-      SetControlsEnabled(false, exclude: ButtonToggleFlags.Cancel);
-      submittingAll = true;
-      SetDelay();
+			SetControlsEnabled(false, exclude: ButtonToggleFlags.Cancel);
+			submittingAll = true;
+			SetDelay();
 
-      for(int i = fileIndex; i < totalFiles; ++i) {
-        processNextSubmission();
-        if(i < totalFiles - 1) {
-          await Task.Delay(delay);
-        }
-        if(shouldCancel) {
-          break;
-        }
-      }
+			for(int i = fileIndex; i < totalFiles; ++i) {
+				processNextSubmission();
+				if(i < totalFiles - 1) {
+					await Task.Delay(delay);
+				}
+				if(shouldCancel) {
+					break;
+				}
+			}
 
-      submittingAll = false;
-      SetControlsEnabled(true);
-      shouldCancel = false;
-    }
+			submittingAll = false;
+			SetControlsEnabled(true);
+			shouldCancel = false;
+		}
 
-    private void GetStartAndStopIndices(HtmlElementCollection entries, out int startIndex, out int stopIndex)
-    {
-      startIndex = 1;
-      stopIndex = entries.Count - 1;
+		private void GetStartAndStopIndices(HtmlElementCollection entries, out int startIndex, out int stopIndex)
+		{
+			startIndex = 1;
+			stopIndex = entries.Count - 1;
 
-      if(string.IsNullOrWhiteSpace(nameSelectBox.Text)) {
-        return;
-      }
+			if(string.IsNullOrWhiteSpace(nameSelectBox.Text)) {
+				return;
+			}
 
-      bool hasSetStartIndex = false;
+			bool hasSetStartIndex = false;
 
-      for(int i = 1; i < entries.Count; ++i) {
+			for(int i = 1; i < entries.Count; ++i) {
 				HtmlElementCollection tdCells = entries[i].GetElementsByTagName("td");
-        string name = tdCells[nameCellIndex].FirstChild.Children[2].InnerText;
-        if(name != nameSelectBox.Text && name != nameSelectToBox.Text) {
-          continue;
-        }
+				string name = tdCells[nameCellIndex].FirstChild.Children[2].InnerText;
+				if(name != nameSelectBox.Text && name != nameSelectToBox.Text) {
+					continue;
+				}
 
-        if(hasSetStartIndex) {
-          stopIndex = i;
-          return;
-        }
-        
-        startIndex = i;
-        hasSetStartIndex = true;
+				if(hasSetStartIndex) {
+					stopIndex = i;
+					return;
+				}
 
-        if(string.IsNullOrWhiteSpace(nameSelectToBox.Text)) {
-          stopIndex = i;
-          return;
-        }
-      }
-    }
+				startIndex = i;
+				hasSetStartIndex = true;
 
-    private void SetRatingSelectedOnPage(int rating, bool value)
-    {
-      HtmlElementCollection entries = browser.Document.GetElementById("tableListMain").GetElementsByTagName("tbody")[0].GetElementsByTagName("tr");
-      HtmlElementCollection tdCells;
+				if(string.IsNullOrWhiteSpace(nameSelectToBox.Text)) {
+					stopIndex = i;
+					return;
+				}
+			}
+		}
 
-      SetCellIndices(entries[1].GetElementsByTagName("td"));
+		private void SetRatingSelectedOnPage(int rating, bool value)
+		{
+			HtmlElementCollection entries = browser.Document.GetElementById("tableListMain").GetElementsByTagName("tbody")[0].GetElementsByTagName("tr");
+			HtmlElementCollection tdCells;
 
-      GetStartAndStopIndices(entries, out int startIndex, out int endIndex);
+			SetCellIndices(entries[1].GetElementsByTagName("td"));
 
-      for(int i = startIndex; i <= endIndex; ++i) {
-        bool selectingUnselectedRow = value && (!selectedRows.ContainsKey(i) || selectedRows[i] != rating);
-        bool deselectingSelectedRow = !value && (selectedRows.ContainsKey(i) && selectedRows[i] == rating);
+			GetStartAndStopIndices(entries, out int startIndex, out int endIndex);
+
+			for(int i = startIndex; i <= endIndex; ++i) {
+				bool selectingUnselectedRow = value && (!selectedRows.ContainsKey(i) || selectedRows[i] != rating);
+				bool deselectingSelectedRow = !value && (selectedRows.ContainsKey(i) && selectedRows[i] == rating);
 
 				if(selectingUnselectedRow || deselectingSelectedRow) {
-          tdCells = entries[i].GetElementsByTagName("td");
+					tdCells = entries[i].GetElementsByTagName("td");
 
-          if(int.Parse(tdCells[ratingCellIndex].FirstChild.FirstChild.InnerText) == rating) {
-            tdCells[checkCellIndex].FirstChild.FirstChild.InvokeMember("click");
+					if(int.Parse(tdCells[ratingCellIndex].FirstChild.FirstChild.InnerText) == rating) {
+						tdCells[checkCellIndex].FirstChild.FirstChild.InvokeMember("click");
 
-            if(selectingUnselectedRow) {
-              selectedRows.Add(i, rating);
-            }
-            else {
-              selectedRows.Remove(i);
-            }
-          }
-        }
-      }
-    }
+						if(selectingUnselectedRow) {
+							selectedRows.Add(i, rating);
+						}
+						else {
+							selectedRows.Remove(i);
+						}
+					}
+				}
+			}
+		}
 
-    private void SetAllSelectedOnPage(bool value)
-    {
-      HtmlElementCollection entries = browser.Document.GetElementById("tableListMain").GetElementsByTagName("tbody")[0].GetElementsByTagName("tr");
-      HtmlElementCollection tdCells;
+		private void SetAllSelectedOnPage(bool value)
+		{
+			HtmlElementCollection entries = browser.Document.GetElementById("tableListMain").GetElementsByTagName("tbody")[0].GetElementsByTagName("tr");
+			HtmlElementCollection tdCells;
 
-      SetCellIndices(entries[1].GetElementsByTagName("td"));
+			SetCellIndices(entries[1].GetElementsByTagName("td"));
 
-      GetStartAndStopIndices(entries, out int startIndex, out int endIndex);
+			GetStartAndStopIndices(entries, out int startIndex, out int endIndex);
 
-      for(int i = startIndex; i <= endIndex; ++i) {
-        tdCells = entries[i].GetElementsByTagName("td");
+			for(int i = startIndex; i <= endIndex; ++i) {
+				tdCells = entries[i].GetElementsByTagName("td");
 
-        if(value && !selectedRows.ContainsKey(i)) {
-          tdCells[checkCellIndex].FirstChild.FirstChild.InvokeMember("click");
-          selectedRows.Add(i, int.Parse(tdCells[ratingCellIndex].FirstChild.FirstChild.InnerText));
-        }
-        else if(!value && selectedRows.ContainsKey(i)) {
-          tdCells[checkCellIndex].FirstChild.FirstChild.InvokeMember("click");
-          selectedRows.Remove(i);
-        }
-      }
-    }
+				if(value && !selectedRows.ContainsKey(i)) {
+					tdCells[checkCellIndex].FirstChild.FirstChild.InvokeMember("click");
+					selectedRows.Add(i, int.Parse(tdCells[ratingCellIndex].FirstChild.FirstChild.InnerText));
+				}
+				else if(!value && selectedRows.ContainsKey(i)) {
+					tdCells[checkCellIndex].FirstChild.FirstChild.InvokeMember("click");
+					selectedRows.Remove(i);
+				}
+			}
+		}
 
-    private void selectButton_Click(object sender, EventArgs e)
-    {
-      DeselectAll();
+		private void selectButton_Click(object sender, EventArgs e)
+		{
+			DeselectAll();
 
-      Cursor = Cursors.WaitCursor;
-      SetControlsEnabled(false, exclude: ButtonToggleFlags.Cancel);
+			Cursor = Cursors.WaitCursor;
+			SetControlsEnabled(false, exclude: ButtonToggleFlags.Cancel);
 
-      if(checkBoxAll.CheckState != CheckState.Indeterminate) {
-        SetAllSelectedOnPage(checkBoxAll.Checked);
-      }
-      else for(int i = 0; i < 6; ++i) {
-        SetRatingSelectedOnPage(i, ratingsChecked[i]);
-      }
+			if(checkBoxAll.CheckState != CheckState.Indeterminate) {
+				SetAllSelectedOnPage(checkBoxAll.Checked);
+			}
+			else for(int i = 0; i < 6; ++i) {
+				SetRatingSelectedOnPage(i, ratingsChecked[i]);
+			}
 
-      numFilesSelectedLabel.Text = selectedRows.Count == 1 ? "1 file selected" : $"{selectedRows.Count} files selected";
+			numFilesSelectedLabel.Text = selectedRows.Count == 1 ? "1 file selected" : $"{selectedRows.Count} files selected";
 
 			SetControlsEnabled(true, exclude: ButtonToggleFlags.ClearRatings | ButtonToggleFlags.WriteRatings);
-      Cursor = Cursors.Default;
-    }
+			Cursor = Cursors.Default;
+		}
 
-    private void checkBox0_CheckedChanged(object sender, EventArgs e) => ToggleRatingSelection(0);
+		private void checkBox0_CheckedChanged(object sender, EventArgs e) => ToggleRatingSelection(0);
 
-    private void checkBox1_CheckedChanged(object sender, EventArgs e) => ToggleRatingSelection(1);
-    private void checkBox2_CheckedChanged(object sender, EventArgs e) => ToggleRatingSelection(2);
-    private void checkBox3_CheckedChanged(object sender, EventArgs e) => ToggleRatingSelection(3);
-    private void checkBox4_CheckedChanged(object sender, EventArgs e) => ToggleRatingSelection(4);
-    private void checkBox5_CheckedChanged(object sender, EventArgs e) => ToggleRatingSelection(5);
-    private void checkBoxAll_CheckedChanged(object sender, EventArgs e) => ToggleAllRatings();
-    private void ToggleRatingSelection(int index)
-    {
-      if(index < 0 || ratingsChecked.Length <= index) {
-        throw new ArgumentException($"Invalid rating {index} passed to {nameof(ToggleRatingSelection)}(). Valid ratings are between 0 and {ratingsChecked.Length - 1}, inclusive.");
-      }
+		private void checkBox1_CheckedChanged(object sender, EventArgs e) => ToggleRatingSelection(1);
 
-      userClickedCheckAll = false;
-      ratingsChecked[index] = !ratingsChecked[index];
+		private void checkBox2_CheckedChanged(object sender, EventArgs e) => ToggleRatingSelection(2);
 
-      int numChecked = 0;
-      foreach(bool boxChecked in ratingsChecked) {
-        if(boxChecked) {
-          ++numChecked;
-        }
-      }
+		private void checkBox3_CheckedChanged(object sender, EventArgs e) => ToggleRatingSelection(3);
 
-      if(numChecked == ratingsChecked.Length) {
-        checkBoxAll.CheckState = CheckState.Checked;
-        checkBoxAll.Checked = true;
-      }
-      else if(numChecked > 0) {
-        checkBoxAll.CheckState = CheckState.Indeterminate;
-        checkBoxAll.Checked = true;
-      }
-      else {
-        checkBoxAll.CheckState = CheckState.Unchecked;
-        checkBoxAll.Checked = false;
-      }
+		private void checkBox4_CheckedChanged(object sender, EventArgs e) => ToggleRatingSelection(4);
 
-      userClickedCheckAll = true;
-    }
+		private void checkBox5_CheckedChanged(object sender, EventArgs e) => ToggleRatingSelection(5);
 
-    private void ToggleAllRatings()
-    {
-      bool checkBoxAllChecked = checkBoxAll.Checked;
+		private void checkBoxAll_CheckedChanged(object sender, EventArgs e) => ToggleAllRatings();
 
-      checkBoxAll.CheckState = checkBoxAllChecked ? CheckState.Checked : CheckState.Unchecked;
+		private void ToggleRatingSelection(int index)
+		{
+			if(index < 0 || ratingsChecked.Length <= index) {
+				throw new ArgumentException($"Invalid rating {index} passed to {nameof(ToggleRatingSelection)}(). Valid ratings are between 0 and {ratingsChecked.Length - 1}, inclusive.");
+			}
+
+			userClickedCheckAll = false;
+			ratingsChecked[index] = !ratingsChecked[index];
+
+			int numChecked = 0;
+			foreach(bool boxChecked in ratingsChecked) {
+				if(boxChecked) {
+					++numChecked;
+				}
+			}
+
+			if(numChecked == ratingsChecked.Length) {
+				checkBoxAll.CheckState = CheckState.Checked;
+				checkBoxAll.Checked = true;
+			}
+			else if(numChecked > 0) {
+				checkBoxAll.CheckState = CheckState.Indeterminate;
+				checkBoxAll.Checked = true;
+			}
+			else {
+				checkBoxAll.CheckState = CheckState.Unchecked;
+				checkBoxAll.Checked = false;
+			}
+
+			userClickedCheckAll = true;
+		}
+
+		private void ToggleAllRatings()
+		{
+			bool checkBoxAllChecked = checkBoxAll.Checked;
+
+			checkBoxAll.CheckState = checkBoxAllChecked ? CheckState.Checked : CheckState.Unchecked;
 			checkBox0.Checked = checkBox1.Checked = checkBox2.Checked =
-        checkBox3.Checked = checkBox4.Checked = checkBox5.Checked = checkBoxAllChecked;
+				checkBox3.Checked = checkBox4.Checked = checkBox5.Checked = checkBoxAllChecked;
 
-      for(int i = 0; i < ratingsChecked.Length; ++i) {
-        ratingsChecked[i] = checkBoxAllChecked;
-      }
-    }
+			for(int i = 0; i < ratingsChecked.Length; ++i) {
+				ratingsChecked[i] = checkBoxAllChecked;
+			}
+		}
 
-    private void DeselectAll()
-    {
-      HtmlElement selectAllBox = browser.Document.GetElementById("selectall");
-      if(!string.IsNullOrEmpty(selectAllBox.GetAttribute("checked"))) {
-        selectAllBox.InvokeMember("click");
-      }
+		private void DeselectAll()
+		{
+			HtmlElement selectAllBox = browser.Document.GetElementById("selectall");
+			if(!string.IsNullOrEmpty(selectAllBox.GetAttribute("checked"))) {
+				selectAllBox.InvokeMember("click");
+			}
 
-      selectAllBox.InvokeMember("click");
-      selectedRows.Clear();
-    }
+			selectAllBox.InvokeMember("click");
+			selectedRows.Clear();
+		}
 
-    private void button25_Click(object sender, EventArgs e) => ChangeNumberOfListings(0);
+		private void button25_Click(object sender, EventArgs e) => ChangeNumberOfListings(0);
 
-    private void button50_Click(object sender, EventArgs e) => ChangeNumberOfListings(1);
 
-    private void button100_Click(object sender, EventArgs e) => ChangeNumberOfListings(2);
+		private void button50_Click(object sender, EventArgs e) => ChangeNumberOfListings(1);
 
-    private void button200_Click(object sender, EventArgs e) => ChangeNumberOfListings(3);
 
-    private void resetSelectionButton_Click(object sender, EventArgs e)
-    {
-      selectedRows.Clear();
-      selectButton.Enabled = selectButtonActive = true;
-    }
+		private void button100_Click(object sender, EventArgs e) => ChangeNumberOfListings(2);
 
-    private void captureRatingsButton_Click(object sender, EventArgs e)
-    {
-      if(selectedRows.Count == 0) {
-        string message = "No files have been selected in the application. If you have selected markers in the browser " +
-          "window, please deselect them and use the application's selection controls.";
 
-        MessageBox.Show(message, "No Files Selected", MessageBoxButtons.OK);
-        return;
-      }
+		private void button200_Click(object sender, EventArgs e) => ChangeNumberOfListings(3);
 
-      SetControlsEnabled(false);
 
-      HtmlElementCollection entries = browser.Document.GetElementById("tableListMain").GetElementsByTagName("tbody")[0].GetElementsByTagName("tr");
+		private void resetSelectionButton_Click(object sender, EventArgs e)
+		{
+			selectedRows.Clear();
+			selectButton.Enabled = selectButtonActive = true;
+		}
 
-      SetCellIndices(entries[1].GetElementsByTagName("td"));
+		private void captureRatingsButton_Click(object sender, EventArgs e)
+		{
+			if(selectedRows.Count == 0) {
+				string message = "No files have been selected in the application. If you have selected markers in the browser " +
+					"window, please deselect them and use the application's selection controls.";
 
-      for(int i = 1; i < entries.Count; ++i) {
+				MessageBox.Show(message, "No Files Selected", MessageBoxButtons.OK);
+				return;
+			}
+
+			SetControlsEnabled(false);
+
+			HtmlElementCollection entries = browser.Document.GetElementById("tableListMain").GetElementsByTagName("tbody")[0].GetElementsByTagName("tr");
+
+			SetCellIndices(entries[1].GetElementsByTagName("td"));
+
+			for(int i = 1; i < entries.Count; ++i) {
 				HtmlElementCollection tdCells = entries[i].GetElementsByTagName("td");
-        if(selectedRows.ContainsKey(i)) {
-          ratingsByName.Add(tdCells[nameCellIndex].FirstChild.Children[2].InnerText, selectedRows[i]);
-        }
-      }
+				if(selectedRows.ContainsKey(i)) {
+					ratingsByName.Add(tdCells[nameCellIndex].FirstChild.Children[2].InnerText, selectedRows[i]);
+				}
+			}
 
-      SetControlsEnabled(true);
-    }
+			SetControlsEnabled(true);
+		}
 
-    private void writeRatingsButton_Click(object sender, EventArgs e)
+		private void writeRatingsButton_Click(object sender, EventArgs e)
 
-    {
-      saveRatingsDialog.FileName = ratingsFileTitleBox.Text;
-      if(saveRatingsDialog.ShowDialog() == DialogResult.OK && !string.IsNullOrWhiteSpace(saveRatingsDialog.FileName)) {
-        using(StreamWriter outStream = new StreamWriter(saveRatingsDialog.FileName, append: false)) {
-          switch(saveRatingsDialog.FilterIndex) {
-            case 1:
-              outStream.Write(GetRatingInfoAsText());
-              break;
-            case 2:
-              outStream.Write(GetRatingInfoAsJSON(includeWhitespace: false));
-              break;
-            case 3:
-              outStream.Write(GetRatingInfoAsJSON(includeWhitespace: true));
-              break;
-            case 4:
-              outStream.Write(GetRatingInfoAsCSV());
-              break;
-          }
-        }
-      }
-    }
+		{
+			saveRatingsDialog.FileName = ratingsFileTitleBox.Text;
+			if(saveRatingsDialog.ShowDialog() == DialogResult.OK && !string.IsNullOrWhiteSpace(saveRatingsDialog.FileName)) {
+				using(StreamWriter outStream = new StreamWriter(saveRatingsDialog.FileName, append: false)) {
+					switch(saveRatingsDialog.FilterIndex) {
+						case 1:
+							outStream.Write(GetRatingInfoAsText());
+							break;
+						case 2:
+							outStream.Write(GetRatingInfoAsJSON(includeWhitespace: false));
+							break;
+						case 3:
+							outStream.Write(GetRatingInfoAsJSON(includeWhitespace: true));
+							break;
+						case 4:
+							outStream.Write(GetRatingInfoAsCSV());
+							break;
+					}
+				}
+			}
+		}
 
-    private void clearRatingsButton_Click(object sender, EventArgs e)
-    {
-      ratingsByName.Clear();
-      writeRatingsButton.Enabled = clearRatingsButton.Enabled = false;
-    }
+		private void clearRatingsButton_Click(object sender, EventArgs e)
+		{
+			ratingsByName.Clear();
+			writeRatingsButton.Enabled = clearRatingsButton.Enabled = false;
+		}
 
-    private string GetRatingInfoAsText()
-    {
-      StringBuilder sb = new StringBuilder(MakeFileHeader());
-      int padding = GetMaxNameLength() + 2;
-      foreach(KeyValuePair<string, int> entry in ratingsByName) {
-        sb.AppendLine(entry.Key.PadRight(padding) + entry.Value);
-      }
+		private string GetRatingInfoAsText()
+		{
+			StringBuilder sb = new StringBuilder(MakeFileHeader());
+			int padding = GetMaxNameLength() + 2;
+			foreach(KeyValuePair<string, int> entry in ratingsByName) {
+				sb.AppendLine(entry.Key.PadRight(padding) + entry.Value);
+			}
 
-      return sb.ToString();
-    }
+			return sb.ToString();
+		}
 
-    private string GetRatingInfoAsJSON(bool includeWhitespace)
-    {
-      string
-        indentation = includeWhitespace ? "  " : "",
-        space = includeWhitespace ? " " : "",
-        newline = includeWhitespace ? Environment.NewLine : "";
+		private string GetRatingInfoAsJSON(bool includeWhitespace)
+		{
+			string
+				indentation = includeWhitespace ? "  " : "",
+				space = includeWhitespace ? " " : "",
+				newline = includeWhitespace ? Environment.NewLine : "";
 
-      StringBuilder sb = new StringBuilder(MakeFileHeader() + "{" + newline);
+			StringBuilder sb = new StringBuilder(MakeFileHeader() + "{" + newline);
 
-      const string LineFormat = "{2}{\"name\":{3}\"{0}\",{3}\"rating\":{3}{1}},{4}";
+			const string LineFormat = "{2}{\"name\":{3}\"{0}\",{3}\"rating\":{3}{1}},{4}";
 
-      foreach(KeyValuePair<string, int> entry in ratingsByName) {
-        sb.AppendFormat(LineFormat, entry.Key, entry.Value, indentation, space, newline);
-      }
+			foreach(KeyValuePair<string, int> entry in ratingsByName) {
+				sb.AppendFormat(LineFormat, entry.Key, entry.Value, indentation, space, newline);
+			}
 
-      if(ratingsByName.Count > 0) {
-        //:: Remove final comma.
-        sb.Length -= includeWhitespace ? 2 : 1;
-      }
+			if(ratingsByName.Count > 0) {
+				//:: Remove final comma.
+				sb.Length -= includeWhitespace ? 2 : 1;
+			}
 
-      sb.Append(newline + "}");
+			sb.Append(newline + "}");
 
-      return sb.ToString();
-    }
+			return sb.ToString();
+		}
 
-    private string GetRatingInfoAsCSV()
-    {
-      StringBuilder sb = new StringBuilder(MakeFileHeader());
-      sb.AppendLine("Name,Rating");
+		private string GetRatingInfoAsCSV()
+		{
+			StringBuilder sb = new StringBuilder(MakeFileHeader());
+			sb.AppendLine("Name,Rating");
 
-      foreach(KeyValuePair<string, int> entry in ratingsByName) {
-        bool nameHasSpecialChar = entry.Key.Contains(",") || entry.Key.Contains(" ") || entry.Key.Contains("\t");
+			foreach(KeyValuePair<string, int> entry in ratingsByName) {
+				bool nameHasSpecialChar = entry.Key.Contains(",") || entry.Key.Contains(" ") || entry.Key.Contains("\t");
 				string name = nameHasSpecialChar ? $"\"{entry.Key}\"" : entry.Key;
-        sb.AppendLine(name + "," + entry.Value);
-      }
+				sb.AppendLine(name + "," + entry.Value);
+			}
 
-      return sb.ToString();
-    }
+			return sb.ToString();
+		}
 
-    private string MakeFileHeader() => commentSymbolBox.Text + " VUFORIA RATINGS INFORMATION" + Environment.NewLine +
-        commentSymbolBox.Text + " " + ratingsFileTitleBox.Text + Environment.NewLine +
-        commentSymbolBox.Text + " " + CurrentTimeString() + Environment.NewLine + Environment.NewLine;
+		private string MakeFileHeader() => commentSymbolBox.Text + " VUFORIA RATINGS INFORMATION" + Environment.NewLine +
+				commentSymbolBox.Text + " " + ratingsFileTitleBox.Text + Environment.NewLine +
+				commentSymbolBox.Text + " " + CurrentTimeString() + Environment.NewLine + Environment.NewLine;
 
-    private int GetMaxNameLength() => ratingsByName.Keys.Max((name) =>  name.Length);
+		private int GetMaxNameLength() => ratingsByName.Keys.Max((name) => name.Length);
 
-    private string CurrentTimeString() => DateTime.Now.ToShortDateString() + " " + DateTime.Now.ToLongTimeString();
+		private string CurrentTimeString() => DateTime.Now.ToShortDateString() + " " + DateTime.Now.ToLongTimeString();
 
-    private void debugCheckBox_CheckedChanged(object sender, EventArgs e) => testBox.Visible = debugCheckBox.Checked;
+		private void debugCheckBox_CheckedChanged(object sender, EventArgs e) => testBox.Visible = debugCheckBox.Checked;
 
-    private void ChangeNumberOfListings(int numListingsIndex)
-    {
-      SetAllSelectedOnPage(false);
-      if(numListingsIndex >= 0 && numListingsIndex < 4) {
-        browser.Document.GetElementById("rowsPerPage").InvokeMember("click");
-        browser.Document.GetElementById("paginate").GetElementsByTagName("li")[numListingsIndex].FirstChild.InvokeMember("click");
-      }
-    }
+		private void ChangeNumberOfListings(int numListingsIndex)
+		{
+			SetAllSelectedOnPage(false);
+			if(numListingsIndex >= 0 && numListingsIndex < 4) {
+				browser.Document.GetElementById("rowsPerPage").InvokeMember("click");
+				browser.Document.GetElementById("paginate").GetElementsByTagName("li")[numListingsIndex].FirstChild.InvokeMember("click");
+			}
+		}
 
-    private void SetCellIndices(HtmlElementCollection rowCells)
-    {
-      bool checkCellIndexSet = false, ratingCellIndexSet = false, nameCellIndexSet = false;
+		private void SetCellIndices(HtmlElementCollection rowCells)
+		{
+			bool checkCellIndexSet = false, ratingCellIndexSet = false, nameCellIndexSet = false;
 
-      for(int i = 0; i < rowCells.Count; ++i) {
-        if(rowCells[i].FirstChild != null) {
-          if(!checkCellIndexSet && rowCells[i].FirstChild.FirstChild != null && rowCells[i].FirstChild.FirstChild.GetAttribute("type") == "checkbox") {
-            checkCellIndex = i;
-            checkCellIndexSet = true;
-          }
-          else if(!nameCellIndexSet && rowCells[i].FirstChild.FirstChild != null && rowCells[i].FirstChild.FirstChild.TagName.ToLower() == "img") {
-            nameCellIndex = i;
-            nameCellIndexSet = true;
-          }
-          else if(!ratingCellIndexSet && rowCells[i].FirstChild.GetAttribute("className") == "rating") {
-            ratingCellIndex = i;
-            ratingCellIndexSet = true;
-          }
-        }
+			for(int i = 0; i < rowCells.Count; ++i) {
+				if(rowCells[i].FirstChild != null) {
+					if(!checkCellIndexSet && rowCells[i].FirstChild.FirstChild != null && rowCells[i].FirstChild.FirstChild.GetAttribute("type") == "checkbox") {
+						checkCellIndex = i;
+						checkCellIndexSet = true;
+					}
+					else if(!nameCellIndexSet && rowCells[i].FirstChild.FirstChild != null && rowCells[i].FirstChild.FirstChild.TagName.ToLower() == "img") {
+						nameCellIndex = i;
+						nameCellIndexSet = true;
+					}
+					else if(!ratingCellIndexSet && rowCells[i].FirstChild.GetAttribute("className") == "rating") {
+						ratingCellIndex = i;
+						ratingCellIndexSet = true;
+					}
+				}
 
-        if(checkCellIndexSet && ratingCellIndexSet) {
-          break;
-        }
-      }
-    }
+				if(checkCellIndexSet && ratingCellIndexSet) {
+					break;
+				}
+			}
+		}
 
-    private void cancelButton_Click(object sender, EventArgs e) => shouldCancel = true;
+		private void cancelButton_Click(object sender, EventArgs e) => shouldCancel = true;
 
-    private void processNextSubmission()
-    {
-      if(!readyToSubmit) {
-        return;
-      }
+		private void processNextSubmission()
+		{
+			if(!readyToSubmit) {
+				return;
+			}
 
-      if(!submittingAll) {
-        SetControlsEnabled(false);
-      }
+			if(!submittingAll) {
+				SetControlsEnabled(false);
+			}
 
-      progressLabel.Text = $"Img {fileIndex + 1} of {totalFiles}";
+			progressLabel.Text = $"Img {fileIndex + 1} of {totalFiles}";
 
-      processStart = DateTime.Now;
+			processStart = DateTime.Now;
 
-      while(true) {
-        try {
-          browser.Document.GetElementById("addDeviceTargetUserView").InvokeMember("click");
-          SendKeysAfterDelay(Path.GetFileName(browseImagesDialog.FileNames[fileIndex]), 1000, sendFinalEnter: true);
-          browser.Document.GetElementById("targetDimension").SetAttribute("value", widthBox.Value.ToString());
-          browser.Document.GetElementById("targetName").SetAttribute("value", Path.GetFileNameWithoutExtension(browseImagesDialog.FileNames[fileIndex]));
-          browser.Document.GetElementById("targetImgFile").InvokeMember("click");
-        }
-        catch {
-          if((DateTime.Now - processStart).TotalSeconds > SubmitTimeout) {
-            shouldCancel = true;
-            break;
-          }
-          continue;
-        }
+			while(true) {
+				try {
+					browser.Document.GetElementById("addDeviceTargetUserView").InvokeMember("click");
+					SendKeysAfterDelay(Path.GetFileName(browseImagesDialog.FileNames[fileIndex]), 1000, sendFinalEnter: true);
+					browser.Document.GetElementById("targetDimension").SetAttribute("value", widthBox.Value.ToString());
+					browser.Document.GetElementById("targetName").SetAttribute("value", Path.GetFileNameWithoutExtension(browseImagesDialog.FileNames[fileIndex]));
+					browser.Document.GetElementById("targetImgFile").InvokeMember("click");
+				}
+				catch {
+					if((DateTime.Now - processStart).TotalSeconds > SubmitTimeout) {
+						shouldCancel = true;
+						break;
+					}
+					continue;
+				}
 
-        System.Threading.Thread.Sleep(1000);
-        browser.Document.GetElementById("AddDeviceTargetBtn").InvokeMember("click");
+				System.Threading.Thread.Sleep(1000);
+				browser.Document.GetElementById("AddDeviceTargetBtn").InvokeMember("click");
 
-        AnimateProgressBar();
-        break;
-      }
+				AnimateProgressBar();
+				break;
+			}
 
-      if(!shouldCancel) {
-        ++fileIndex;
-      }
+			if(!shouldCancel) {
+				++fileIndex;
+			}
 
-      if(!submittingAll) { 
-        SetControlsEnabled(true, exclude: ButtonToggleFlags.ClearRatings | ButtonToggleFlags.WriteRatings);
-      }
-    }
+			if(!submittingAll) {
+				SetControlsEnabled(true, exclude: ButtonToggleFlags.ClearRatings | ButtonToggleFlags.WriteRatings);
+			}
+		}
 
-    private async void AnimateProgressBar()
-    {
-      for(int i = 0; i < 100; ++i) {
-        progressBar.PerformStep();
-        await Task.Delay(5);
-      }
-    }
+		private async void AnimateProgressBar()
+		{
+			for(int i = 0; i < 100; ++i) {
+				progressBar.PerformStep();
+				await Task.Delay(5);
+			}
+		}
 
-    private void SetControlsEnabled(bool value, ButtonToggleFlags exclude = ButtonToggleFlags.None)
-    {
-      browseImagesButton.Enabled = value;
-      submitNextButton.Enabled = value;
-      submitAllButton.Enabled = value;
-      delayBox.Enabled = value;
-      checkBox0.Enabled = value;
-      checkBox1.Enabled = value;
-      checkBox2.Enabled = value;
-      checkBox3.Enabled = value;
-      checkBox4.Enabled = value;
-      checkBox5.Enabled = value;
-      checkBoxAll.Enabled = value;
-      button25.Enabled = value;
-      button50.Enabled = value;
-      button100.Enabled = value;
-      button200.Enabled = value;
-      captureRatingsButton.Enabled = value;
-      nameSelectBox.Enabled = value;
-      nameSelectToBox.Enabled = value;
-      ratingsFileTitleBox.Enabled = value;
-      commentSymbolBox.Enabled = value;
-      widthBox.Enabled = value;
+		private void SetControlsEnabled(bool value, ButtonToggleFlags exclude = ButtonToggleFlags.None)
+		{
+			browseImagesButton.Enabled = value;
+			submitNextButton.Enabled = value;
+			submitAllButton.Enabled = value;
+			delayBox.Enabled = value;
+			checkBox0.Enabled = value;
+			checkBox1.Enabled = value;
+			checkBox2.Enabled = value;
+			checkBox3.Enabled = value;
+			checkBox4.Enabled = value;
+			checkBox5.Enabled = value;
+			checkBoxAll.Enabled = value;
+			button25.Enabled = value;
+			button50.Enabled = value;
+			button100.Enabled = value;
+			button200.Enabled = value;
+			captureRatingsButton.Enabled = value;
+			nameSelectBox.Enabled = value;
+			nameSelectToBox.Enabled = value;
+			ratingsFileTitleBox.Enabled = value;
+			commentSymbolBox.Enabled = value;
+			widthBox.Enabled = value;
 
-      if((exclude & ButtonToggleFlags.Cancel) == 0) {
-        cancelButton.Enabled = value;
-      }
-      if((exclude & ButtonToggleFlags.Reset) == 0 && selectButtonActive) { 
-          selectButton.Enabled = value;
-      }
-      if((exclude & ButtonToggleFlags.WriteRatings) == 0 && (!value || ratingsByName.Count > 0)) {
-        writeRatingsButton.Enabled = value;
-      }
-      if((exclude & ButtonToggleFlags.ClearRatings) == 0 && (!value || ratingsByName.Count > 0)) {
-        clearRatingsButton.Enabled = value;
-      }
-    }
+			if((exclude & ButtonToggleFlags.Cancel) == 0) {
+				cancelButton.Enabled = value;
+			}
+			if((exclude & ButtonToggleFlags.Reset) == 0 && selectButtonActive) {
+				selectButton.Enabled = value;
+			}
+			if((exclude & ButtonToggleFlags.WriteRatings) == 0 && (!value || ratingsByName.Count > 0)) {
+				writeRatingsButton.Enabled = value;
+			}
+			if((exclude & ButtonToggleFlags.ClearRatings) == 0 && (!value || ratingsByName.Count > 0)) {
+				clearRatingsButton.Enabled = value;
+			}
+		}
 
-    private void SetDelay()
-    {
-      if(delayBox.Text.Length > 0) {
-        delay = (int)(delayBox.Value * 1000);
-      }
-      else {
-        delay = 10_000;
-        delayBox.Text = (delay / 1000).ToString();
-      }
-    }
-  }
+		private void SetDelay()
+		{
+			if(delayBox.Text.Length > 0) {
+				delay = (int)(delayBox.Value * 1000);
+			}
+			else {
+				delay = 10_000;
+				delayBox.Text = (delay / 1000).ToString();
+			}
+		}
+	}
 }
