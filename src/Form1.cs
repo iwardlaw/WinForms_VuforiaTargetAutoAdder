@@ -62,7 +62,7 @@ namespace Vuforia_Autoadd_Targets
 			totalFiles = browseImagesDialog.FileNames.Length;
 			progressBar.Maximum = totalFiles * 100;
 			PopulateImageTextbox();
-			progressLabel.Text = "Img 0 of " + totalFiles;
+			progressLabel.Text = $"Img 0 of {totalFiles}";
 		}
 
 		private void PopulateImageTextbox()
@@ -110,7 +110,7 @@ namespace Vuforia_Autoadd_Targets
 				return;
 			}
 
-			SetControlsEnabled(false, exclude: ButtonToggleFlags.Cancel);
+			SetControlsEnabled(false, excludeFlags: ButtonToggleFlags.Cancel);
 			submittingAll = true;
 			SetDelay();
 
@@ -199,9 +199,9 @@ namespace Vuforia_Autoadd_Targets
 
 			SetCellIndices(entries[1].GetElementsByTagName("td"));
 
-			GetStartAndStopIndices(entries, out int startIndex, out int endIndex);
+			GetStartAndStopIndices(entries, out int startIndex, out int stopIndex);
 
-			for(int i = startIndex; i <= endIndex; ++i) {
+			for(int i = startIndex; i <= stopIndex; ++i) {
 				tdCells = entries[i].GetElementsByTagName("td");
 
 				if(value && !selectedRows.ContainsKey(i)) {
@@ -220,7 +220,7 @@ namespace Vuforia_Autoadd_Targets
 			DeselectAll();
 
 			Cursor = Cursors.WaitCursor;
-			SetControlsEnabled(false, exclude: ButtonToggleFlags.Cancel);
+			SetControlsEnabled(false, excludeFlags: ButtonToggleFlags.Cancel);
 
 			if(checkBoxAll.CheckState != CheckState.Indeterminate) {
 				SetAllSelectedOnPage(checkBoxAll.Checked);
@@ -231,7 +231,7 @@ namespace Vuforia_Autoadd_Targets
 
 			numFilesSelectedLabel.Text = selectedRows.Count == 1 ? "1 file selected" : $"{selectedRows.Count} files selected";
 
-			SetControlsEnabled(true, exclude: ButtonToggleFlags.ClearRatings | ButtonToggleFlags.WriteRatings);
+			SetControlsEnabled(true, excludeFlags: ButtonToggleFlags.ClearRatings | ButtonToggleFlags.WriteRatings);
 			Cursor = Cursors.Default;
 		}
 
@@ -326,10 +326,10 @@ namespace Vuforia_Autoadd_Targets
 		private void captureRatingsButton_Click(object sender, EventArgs e)
 		{
 			if(selectedRows.Count == 0) {
-				string message = "No files have been selected in the application. If you have selected markers in the browser " +
+				const string Message = "No files have been selected in the application. If you have selected markers in the browser " +
 					"window, please deselect them and use the application's selection controls.";
 
-				MessageBox.Show(message, "No Files Selected", MessageBoxButtons.OK);
+				MessageBox.Show(Message, "No Files Selected", MessageBoxButtons.OK);
 				return;
 			}
 
@@ -350,7 +350,6 @@ namespace Vuforia_Autoadd_Targets
 		}
 
 		private void writeRatingsButton_Click(object sender, EventArgs e)
-
 		{
 			saveRatingsDialog.FileName = ratingsFileTitleBox.Text;
 			if(saveRatingsDialog.ShowDialog() == DialogResult.OK && !string.IsNullOrWhiteSpace(saveRatingsDialog.FileName)) {
@@ -392,10 +391,9 @@ namespace Vuforia_Autoadd_Targets
 
 		private string GetRatingInfoAsJSON(bool includeWhitespace)
 		{
-			string
-				indentation = includeWhitespace ? "  " : "",
-				space = includeWhitespace ? " " : "",
-				newline = includeWhitespace ? Environment.NewLine : "";
+			string indentation = includeWhitespace ? "  " : "";
+			string space = includeWhitespace ? " " : "";
+			string newline = includeWhitespace ? Environment.NewLine : "";
 
 			StringBuilder sb = new StringBuilder(MakeFileHeader() + "{" + newline);
 
@@ -443,8 +441,9 @@ namespace Vuforia_Autoadd_Targets
 		{
 			SetAllSelectedOnPage(false);
 			if(numListingsIndex >= 0 && numListingsIndex < 4) {
-				browser.Document.GetElementById("rowsPerPage").InvokeMember("click");
-				browser.Document.GetElementById("paginate").GetElementsByTagName("li")[numListingsIndex].FirstChild.InvokeMember("click");
+				HtmlDocument document = browser.Document;
+				document.GetElementById("rowsPerPage").InvokeMember("click");
+				document.GetElementById("paginate").GetElementsByTagName("li")[numListingsIndex].FirstChild.InvokeMember("click");
 			}
 		}
 
@@ -486,17 +485,18 @@ namespace Vuforia_Autoadd_Targets
 				SetControlsEnabled(false);
 			}
 
-			progressLabel.Text = $"Img {fileIndex + 1} of {totalFiles}";
+			HtmlDocument document = browser.Document;
 
+			progressLabel.Text = $"Img {fileIndex + 1} of {totalFiles}";
 			processStart = DateTime.Now;
 
 			while(true) {
 				try {
-					browser.Document.GetElementById("addDeviceTargetUserView").InvokeMember("click");
+					document.GetElementById("addDeviceTargetUserView").InvokeMember("click");
 					SendKeysAfterDelay(Path.GetFileName(browseImagesDialog.FileNames[fileIndex]), 1000, sendFinalEnter: true);
-					browser.Document.GetElementById("targetDimension").SetAttribute("value", widthBox.Value.ToString());
-					browser.Document.GetElementById("targetName").SetAttribute("value", Path.GetFileNameWithoutExtension(browseImagesDialog.FileNames[fileIndex]));
-					browser.Document.GetElementById("targetImgFile").InvokeMember("click");
+					document.GetElementById("targetDimension").SetAttribute("value", widthBox.Value.ToString());
+					document.GetElementById("targetName").SetAttribute("value", Path.GetFileNameWithoutExtension(browseImagesDialog.FileNames[fileIndex]));
+					document.GetElementById("targetImgFile").InvokeMember("click");
 				}
 				catch {
 					if((DateTime.Now - processStart).TotalSeconds > SubmitTimeout) {
@@ -507,7 +507,7 @@ namespace Vuforia_Autoadd_Targets
 				}
 
 				System.Threading.Thread.Sleep(1000);
-				browser.Document.GetElementById("AddDeviceTargetBtn").InvokeMember("click");
+				document.GetElementById("AddDeviceTargetBtn").InvokeMember("click");
 
 				AnimateProgressBar();
 				break;
@@ -518,7 +518,7 @@ namespace Vuforia_Autoadd_Targets
 			}
 
 			if(!submittingAll) {
-				SetControlsEnabled(true, exclude: ButtonToggleFlags.ClearRatings | ButtonToggleFlags.WriteRatings);
+				SetControlsEnabled(true, excludeFlags: ButtonToggleFlags.ClearRatings | ButtonToggleFlags.WriteRatings);
 			}
 		}
 
@@ -530,7 +530,7 @@ namespace Vuforia_Autoadd_Targets
 			}
 		}
 
-		private void SetControlsEnabled(bool value, ButtonToggleFlags exclude = ButtonToggleFlags.None)
+		private void SetControlsEnabled(bool value, ButtonToggleFlags excludeFlags = ButtonToggleFlags.None)
 		{
 			browseImagesButton.Enabled = value;
 			submitNextButton.Enabled = value;
@@ -554,16 +554,16 @@ namespace Vuforia_Autoadd_Targets
 			commentSymbolBox.Enabled = value;
 			widthBox.Enabled = value;
 
-			if((exclude & ButtonToggleFlags.Cancel) == 0) {
+			if((excludeFlags & ButtonToggleFlags.Cancel) == 0) {
 				cancelButton.Enabled = value;
 			}
-			if((exclude & ButtonToggleFlags.Reset) == 0 && selectButtonActive) {
+			if((excludeFlags & ButtonToggleFlags.Reset) == 0 && selectButtonActive) {
 				selectButton.Enabled = value;
 			}
-			if((exclude & ButtonToggleFlags.WriteRatings) == 0 && (!value || ratingsByName.Count > 0)) {
+			if((excludeFlags & ButtonToggleFlags.WriteRatings) == 0 && (!value || ratingsByName.Count > 0)) {
 				writeRatingsButton.Enabled = value;
 			}
-			if((exclude & ButtonToggleFlags.ClearRatings) == 0 && (!value || ratingsByName.Count > 0)) {
+			if((excludeFlags & ButtonToggleFlags.ClearRatings) == 0 && (!value || ratingsByName.Count > 0)) {
 				clearRatingsButton.Enabled = value;
 			}
 		}
